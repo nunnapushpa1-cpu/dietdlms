@@ -2,7 +2,7 @@
 <html lang="en">
  <head>
 
-<title>DIET Digital Library</title>
+<title>DIETDLMS</title>
 
 <meta name="description" content="Official DIET Digital Library">
 
@@ -14,7 +14,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DIET College - Smart Digital Library System</title>
+  <title>DIETDLMS</title>
   <style>
         * {
             margin: 0;
@@ -995,7 +995,7 @@
     <div class="section">
      <h3>➕ Add New Book</h3>
      <form onsubmit="addBook(event)">
-      <div class="form-inline"><input type="text" id="bookTitle" placeholder="📖 Book Title" required> <input type="text" id="bookAuthor" placeholder="✍️ Author Name" required> <input type="text" id="bookISBN" placeholder="🔢 ISBN Number" required> <select id="bookCategory" required> <option value="">-- Select Category --</option> <option value="Fiction">Fiction</option> <option value="Non-Fiction">Non-Fiction</option> <option value="Science">Science</option> <option value="Technology">Technology</option> <option value="History">History</option> <option value="Biography">Biography</option> <option value="Mathematics">Mathematics</option> <option value="Literature">Literature</option> </select> <input type="number" id="bookCopies" placeholder="📦 Number of Copies" min="1" required>
+      <div class="form-inline"><input type="file" id="bookFile" placeholder="📖 Book File" required> <input type="text" id="bookTitle" placeholder="📖 Book Title" required> <input type="text" id="bookAuthor" placeholder="✍️ Author Name" required> <input type="text" id="bookISBN" placeholder="🔢 ISBN Number" required> <select id="bookCategory" required> <option value="">-- Select Category --</option> <option value="Fiction">Fiction</option> <option value="Non-Fiction">Non-Fiction</option> <option value="Science">Science</option> <option value="Technology">Technology</option> <option value="History">History</option> <option value="Biography">Biography</option> <option value="Mathematics">Mathematics</option> <option value="Literature">Literature</option> </select> <input type="number" id="bookCopies" placeholder="📦 Number of Copies" min="1" required>
       </div><button type="submit" class="add-book-btn">➕ Add Book to Library</button>
      </form>
     </div>
@@ -1052,6 +1052,8 @@
      </div>
      <div class="edit-form-group"><label for="editISBN">🔢 ISBN Number</label> <input type="text" id="editISBN" required>
      </div>
+     <div class="edit-form-group"><label for="bookfile"> Book File</label> <input type="file" id="bookFile" accept=".pdf,.doc,.docx,.txt" required>
+     </div>
      <div class="edit-form-group"><label for="editCategory">🗂️ Category</label> <select id="editCategory" required> <option value="Fiction">Fiction</option> <option value="Non-Fiction">Non-Fiction</option> <option value="Science">Science</option> <option value="Technology">Technology</option> <option value="History">History</option> <option value="Biography">Biography</option> <option value="Mathematics">Mathematics</option> <option value="Literature">Literature</option> </select>
      </div>
      <div class="edit-form-group"><label for="editCopies">📦 Total Copies</label> <input type="number" id="editCopies" min="1" required>
@@ -1064,7 +1066,12 @@
    </div>
   </div>
   <script>
+
+
         // Sample book database with more content
+
+        let books = JSON.parse(localStorage.getItem("books")) || [];
+        let bookContents = JSON.parse(localStorage.getItem("bookContents")) || {};
         let books = [
             { id: 1, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "978-0743273565", category: "Fiction", copies: 5, borrowed: 0 },
             { id: 2, title: "To Kill a Mockingbird", author: "Harper Lee", isbn: "978-0060935467", category: "Fiction", copies: 4, borrowed: 0 },
@@ -1345,6 +1352,14 @@
             }, 2000);
         }
 
+// Save data to localStorage
+        function saveData() {
+    localStorage.setItem("books", JSON.stringify(books));
+    localStorage.setItem("bookContents", JSON.stringify(bookContents));
+    localStorage.setItem("registeredStudents", JSON.stringify(registeredStudents));
+    localStorage.setItem("studentBorrowedBooks", JSON.stringify(studentBorrowedBooks));
+}
+           
         // Login handler
         function handleLogin(event) {
             event.preventDefault();
@@ -1531,28 +1546,48 @@
         }
 
         // Add new book
-        function addBook(event) {
-            event.preventDefault();
+        async function addBook(event) {
 
-            const newBook = {
-                id: nextBookId++,
-                title: document.getElementById('bookTitle').value,
-                author: document.getElementById('bookAuthor').value,
-                isbn: document.getElementById('bookISBN').value,
-                category: document.getElementById('bookCategory').value,
-                copies: parseInt(document.getElementById('bookCopies').value),
-                borrowed: 0
-            };
+    event.preventDefault();
 
-            books.push(newBook);
-            updateAdminStats();
-            displayAdminBooks();
-            event.target.reset();
-            
-            showMessage('✅ Book added successfully to the library!', 'success');
-        }
+    const newBook = {
+        id: nextBookId++,
+        title: document.getElementById('bookTitle').value,
+        author: document.getElementById('bookAuthor').value,
+        isbn: document.getElementById('bookISBN').value,
+        category: document.getElementById('bookCategory').value,
+        copies: parseInt(document.getElementById('bookCopies').value),
+        borrowed: 0,
+        status: "Available"
+    };
 
-        // Delete book
+    // SAVE TO SUPABASE DATABASE
+    const { data, error } = await supabaseClient
+        .from('books')
+        .insert([{
+            title: newBook.title,
+            author: newBook.author,
+            category: newBook.category,
+            status: newBook.status
+        }]);
+
+    if (error) {
+        console.error(error);
+        showMessage('❌ Failed to save book to database', 'error');
+        return;
+    }
+
+    // YOUR EXISTING CODE (DO NOT REMOVE)
+    books.push(newBook);
+
+    updateAdminStats();
+    displayAdminBooks();
+
+    event.target.reset();
+
+    showMessage('✅ Book added successfully to database!', 'success');
+}
+         // Delete book
         function deleteBook(id) {
             const book = books.find(b => b.id === id);
             
@@ -1944,38 +1979,37 @@
         document.head.appendChild(style);
     </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9af7129c218a3e1c',t:'MTc2NTk4MTM0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-const SUPABASE_URL = "https://bjwhdmruplbivizpvcti.supabase.co";
-const SUPABASE_KEY = "sb_publishable__oVg4Qk3A8bhF_s6nzG9Aw_6lAzDAGD";
+const supabaseClient = supabase.createClient(
+  "https://bjwhdmruplbivizpvcti.supabase.co",
+  "sb_publishable__oVg4Qk3A8bhF_s6nzG9Aw_6lAzDAGD"
+  let books = [];
+let registeredStudents = [];
+let studentBorrowedBooks = {};
+);
+async function loadBooksFromDatabase() {
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-</script>
-<script>
-async function addBook() {
-
-    const title = document.getElementById("title").value;
-    const author = document.getElementById("author").value;
-    const category = document.getElementById("category").value;
-    const status = document.getElementById("status").value;
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from("books")
-        .insert([
-            {
-                title: title,
-                author: author,
-                category: category,
-                status: status
-            }
-        ]);
+        .select("*");
 
     if (error) {
-        alert("Error: " + error.message);
-    } else {
-        alert("Book added successfully!");
+        console.log("Load error:", error);
+        return;
     }
+
+    books = data;   // replace local array
+
+    updateAdminStats();
+    displayAdminBooks();
 }
+window.addEventListener("DOMContentLoaded", function() {
+    loadBooksFromDatabase();
+});
 </script>
+</script>
+
 </body>
 </html>
